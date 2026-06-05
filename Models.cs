@@ -18,7 +18,7 @@ public class Course
                     "Title cannot be empty.");
     }
 
-    public int Capacity
+   public int Capacity
     {
         get;
         set => field =
@@ -62,7 +62,9 @@ public class Student
                 ? value
                 : throw new ArgumentOutOfRangeException();
     }
+    
 }
+
 public interface IGradable
 {
     string Title { get; }
