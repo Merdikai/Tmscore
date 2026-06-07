@@ -24,7 +24,8 @@ decimal grantPerStudent = 1999.99m;
 decimal totalAllocation = grantPerStudent * 100_000m; 
 Console.WriteLine($"Total allocated (decimal): {totalAllocation}"); 
 Console.WriteLine($"Total allocated (formatted): {totalAllocation:F2}");*/
-
+using System.Diagnostics;
+    using System.Threading;
 
 var enrollment =
     new EnrollmentRecord(
@@ -257,3 +258,81 @@ string[] allCourses =
 
 Console.WriteLine(
     $"\nFull curriculum: {string.Join(", ", allCourses)}");
+
+Console.WriteLine("\n--- Async Timing Demo ---");
+
+var sw = Stopwatch.StartNew();
+
+// Blocking
+for (int i = 0; i < 5; i++)
+{
+    Thread.Sleep(300);
+}
+
+Console.WriteLine($"Blocking sequential: {sw.ElapsedMilliseconds}ms");
+
+// Async sequential
+sw.Restart();
+
+for (int i = 0; i < 5; i++)
+{
+    await Task.Delay(300);
+}
+
+Console.WriteLine($"Async sequential:   {sw.ElapsedMilliseconds}ms");
+
+// Async parallel
+sw.Restart();
+
+var tasks =
+    Enumerable.Range(0, 5)
+              .Select(_ => Task.Delay(300));
+
+await Task.WhenAll(tasks);
+
+Console.WriteLine($"Async parallel:     {sw.ElapsedMilliseconds}ms");    
+
+async Task<Student> FetchStudentAsync(string id)
+{
+    Console.WriteLine($"  Fetching {id}...");
+
+    await Task.Delay(300);
+
+    return new Student
+    {
+        Id = id,
+        Name = $"Student-{id}",
+        Age = 20,
+        GPA = id switch
+        {
+            "S1" => 3.8m,
+            "S2" => 2.4m,
+            "S3" => 3.5m,
+            "S4" => 1.9m,
+            "S5" => 3.2m,
+            _ => 2.5m
+        }
+    };
+    
+}
+
+
+async Task<Course> FetchCourseAsync(string code)
+{
+    Console.WriteLine($"  Fetching course {code}...");
+
+    await Task.Delay(200);
+
+    return new Course
+    {
+        Code = code,
+        Title = $"Course-{code}",
+        Capacity = code switch
+        {
+            "CRS-101" => 2,
+            "CRS-201" => 30,
+            "CRS-301" => 15,
+            _ => 25
+        }
+    };
+}
