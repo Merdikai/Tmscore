@@ -336,3 +336,144 @@ async Task<Course> FetchCourseAsync(string code)
         }
     };
 }
+
+Console.WriteLine("\n--- Parallel Loading Demo ---");
+
+sw.Restart();
+
+string[] studentIds =
+[
+    "S1",
+    "S2",
+    "S3",
+    "S4",
+    "S5"
+];
+
+string[] courseCodes =
+[
+    "CRS-101",
+    "CRS-201",
+    "CRS-301"
+];
+
+var studentTasks =
+    studentIds.Select(id => FetchStudentAsync(id));
+
+var courseTasks =
+    courseCodes.Select(code => FetchCourseAsync(code));
+
+Student[] loadedStudents =
+    await Task.WhenAll(studentTasks);
+
+Course[] courses =
+    await Task.WhenAll(courseTasks);
+
+Console.WriteLine(
+    $"\nLoaded {loadedStudents.Length} students and {courses.Length} courses...");
+
+foreach (var student in loadedStudents)
+{
+    Console.WriteLine(
+        $"  {student.Name} - GPA: {student.GPA}");
+}
+
+Console.WriteLine("\n--- Enrollment Engine ---");
+
+var enrollCourse = new Course
+{
+    Code = "CRS-101",
+    Title = "C# Mastery",
+    Capacity = 2
+};
+
+var enrollService = new EnrollmentService();
+
+var enrollments = new List<EnrollmentRecord>();
+
+var failures = new List<string>();
+
+sw.Restart();
+
+foreach (var student in loadedStudents)
+{
+    try
+    {
+        var record =
+            enrollService.ProcessRegistration(
+                student,
+                enrollCourse);
+
+        enrollCourse.EnrolledCount++;
+
+        enrollments.Add(record);
+
+        Console.WriteLine(
+            $"  Enrolled: {student.Name}");
+    }
+    catch (InvalidOperationException ex)
+    {
+        failures.Add(
+            $"{student.Name}: {ex.Message}");
+
+        Console.WriteLine(
+            $"  Rejected: {student.Name} - {ex.Message}");
+    }
+}
+
+try
+{
+    var overflowCourse = new Course
+    {
+        Code = "CRS-999",
+        Title = "Overflow Test",
+        Capacity = 1,
+        EnrolledCount = 1
+    };
+
+    enrollService.ProcessRegistration(
+        new Student
+        {
+            Id = "S99",
+            Name = "Test",
+            Age = 20,
+            GPA = 3.0m
+        },
+        overflowCourse);
+}
+catch (CapacityReachedException ex)
+{
+    Console.WriteLine("\nDomain exception caught:");
+
+    Console.WriteLine(
+        $"  Course: {ex.CourseCode}");
+
+    Console.WriteLine(
+        $"  Message: {ex.Message}");
+}
+
+sw.Stop();
+
+decimal classAverage =
+    loadedStudents.Length > 0
+        ? loadedStudents.Average(s => s.GPA)
+        : 0m;
+
+Console.WriteLine("\n========== ENROLLMENT SUMMARY ==========");
+Console.WriteLine($"Total students loaded:      {loadedStudents.Length}");
+Console.WriteLine($"Successful enrollments:     {enrollments.Count}");
+Console.WriteLine($"Failed enrollments:         {failures.Count}");
+Console.WriteLine($"Class average GPA:          {classAverage:F2}");
+Console.WriteLine($"Total elapsed time:         {sw.ElapsedMilliseconds}ms");
+
+if (failures.Count > 0)
+{
+    Console.WriteLine("\n--- Failure Details ---");
+
+    foreach (var failure in failures)
+    {
+        Console.WriteLine($"  {failure}");
+    }
+}
+
+Console.WriteLine("========================================");
